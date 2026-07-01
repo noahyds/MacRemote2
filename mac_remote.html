@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MacRemote">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon.png">
+<title>Mac Remote</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ═══ THEMES ═══ */
+.t-terminal{--bg:#0b0f0d;--s1:#12181500;--card:#121a16;--card2:#182420;--line:#233029;--acc:#00ff88;--acc2:#00cc6e;--blue:#4dd4ff;--red:#ff4d6a;--yellow:#ffd24d;--purple:#b48ead;--txt:#e4f0ea;--dim:#5c7268;--glow:0 0 20px rgba(0,255,136,.25)}
+.t-nord{--bg:#191d28;--card:#222736;--card2:#2b3142;--line:#39415a;--acc:#88c0d0;--acc2:#5e9db5;--blue:#81a1c1;--red:#bf616a;--yellow:#ebcb8b;--purple:#b48ead;--txt:#d8dee9;--dim:#5a647a;--glow:0 0 20px rgba(136,192,208,.2)}
+.t-sunset{--bg:#17100c;--card:#221812;--card2:#2f2118;--line:#42302a;--acc:#ff8c42;--acc2:#e0702e;--blue:#ffb066;--red:#ff5470;--yellow:#ffd166;--purple:#ff6b9d;--txt:#f2e2d6;--dim:#7a5a48;--glow:0 0 20px rgba(255,140,66,.22)}
+.t-ice{--bg:#eef3f8;--card:#ffffff;--card2:#e6edf5;--line:#cdd9e6;--acc:#0a66d6;--acc2:#0850ad;--blue:#2f9fff;--red:#d62b45;--yellow:#c78500;--purple:#7744cc;--txt:#152535;--dim:#7d93a9;--glow:0 4px 16px rgba(10,102,214,.15)}
+.t-neon{--bg:#0a0014;--card:#14041f;--card2:#1e0830;--line:#340a52;--acc:#ff2bd6;--acc2:#cc1aaa;--blue:#25f4ff;--red:#ff2b6a;--yellow:#f6ff45;--purple:#b14dff;--txt:#f2e0ff;--dim:#6a3a8a;--glow:0 0 22px rgba(255,43,214,.3)}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overscroll-behavior:none}
+body{background:var(--bg);color:var(--txt);font-family:'JetBrains Mono',monospace;height:100dvh;overflow:hidden;display:flex;flex-direction:column;transition:background .35s,color .35s}
+
+/* ═══ LOGIN ═══ */
+#login{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 26px;gap:18px;text-align:center}
+#login .logo{width:92px;height:92px;border-radius:24px;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;box-shadow:var(--glow)}
+#login .logo svg{width:52px;height:52px}
+.brand{font-family:'Space Grotesk',sans-serif;font-size:34px;font-weight:700;letter-spacing:-1.5px}
+.brand span{color:var(--acc)}
+.sub{color:var(--dim);font-size:13px;line-height:1.6}
+.field{width:100%;background:var(--card);border:1px solid var(--line);border-radius:14px;color:var(--txt);font-family:'JetBrains Mono',monospace;font-size:16px;padding:15px 17px;outline:none;transition:border-color .2s,box-shadow .2s}
+.field:focus{border-color:var(--acc);box-shadow:var(--glow)}
+
+/* ═══ SHELL ═══ */
+#shell{display:none;flex-direction:column;height:100dvh;overflow:hidden}
+#topbar{display:flex;align-items:center;gap:12px;padding:14px 16px;padding-top:max(14px,env(safe-area-inset-top));border-bottom:1px solid var(--line);flex-shrink:0;background:var(--bg);z-index:20}
+#backbtn{background:none;border:none;color:var(--acc);font-size:22px;cursor:pointer;padding:2px 4px;display:none;line-height:1}
+#topbar .title{font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:600;flex:1;letter-spacing:-.4px}
+.conn{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--dim)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--dim);transition:.2s}
+.dot.on{background:var(--acc);box-shadow:0 0 8px var(--acc)}
+.dot.off{background:var(--red);box-shadow:0 0 8px var(--red)}
+
+#screens{flex:1;overflow:hidden;position:relative}
+.screen{position:absolute;inset:0;overflow-y:auto;padding:16px;display:none;flex-direction:column;gap:14px;-webkit-overflow-scrolling:touch}
+.screen.active{display:flex;animation:slidein .22s ease}
+@keyframes slidein{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
+
+/* ═══ CARDS ═══ */
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px;transition:background .35s,border-color .35s}
+.card-t{font-family:'Space Grotesk',sans-serif;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:1.6px;margin-bottom:12px;font-weight:600}
+.eyebrow{font-size:10px;color:var(--dim);letter-spacing:2px;text-transform:uppercase}
+
+/* ═══ DASHBOARD ═══ */
+.dash-hello{display:flex;flex-direction:column;gap:3px;margin-bottom:2px}
+.dash-hello .hi{font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:700;letter-spacing:-.8px}
+.dash-hello .host{font-size:12px;color:var(--dim)}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 14px;display:flex;flex-direction:column;gap:5px}
+.stat .k{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1.2px;display:flex;align-items:center;gap:5px}
+.stat .v{font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:700;color:var(--acc);letter-spacing:-1px;line-height:1}
+.stat .vsub{font-size:11px;color:var(--dim)}
+.minibar{height:4px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:2px}
+.minibar>div{height:100%;background:var(--acc);border-radius:2px;transition:width .5s ease}
+.minibar>div.warn{background:var(--yellow)}
+.minibar>div.hot{background:var(--red)}
+
+/* now playing */
+.np{display:flex;align-items:center;gap:13px}
+.np-art{width:46px;height:46px;border-radius:11px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;border:1px solid var(--line)}
+.np-meta{flex:1;overflow:hidden}
+.np-track{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.np-artist{font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.np-ctrl{display:flex;gap:6px;flex-shrink:0}
+.np-btn{width:38px;height:38px;border-radius:10px;background:var(--card2);border:1px solid var(--line);color:var(--txt);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.1s}
+.np-btn:active{transform:scale(.9);background:var(--acc);color:var(--bg)}
+
+/* quick actions row */
+.qrow{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.q{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 6px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:.12s;user-select:none}
+.q:active{transform:scale(.92);background:var(--card2)}
+.q .qi{font-size:22px}
+.q .ql{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+
+/* feature tiles */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;cursor:pointer;transition:.14s;user-select:none;position:relative;overflow:hidden}
+.tile:active{transform:scale(.96);border-color:var(--acc)}
+.tile .ti{font-size:26px}
+.tile .tn{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600}
+.tile .td{font-size:10px;color:var(--dim);line-height:1.4}
+
+/* ═══ BUTTONS ═══ */
+.btn{background:var(--card);border:1px solid var(--line);border-radius:13px;color:var(--txt);font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;padding:14px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:7px;transition:.1s;user-select:none}
+.btn .bi{font-size:21px}
+.btn:active{transform:scale(.94);background:var(--card2)}
+.btn.row{flex-direction:row;justify-content:center;gap:9px;padding:14px}
+.btn.acc{border-color:var(--acc);color:var(--acc)}
+.btn.red{border-color:var(--red);color:var(--red)}
+.btn.blue{border-color:var(--blue);color:var(--blue)}
+.btn.yellow{border-color:var(--yellow);color:var(--yellow)}
+.btn.on-state{background:var(--acc)!important;color:var(--bg)!important;border-color:var(--acc2)!important}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+
+/* slider */
+.slider-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:11px}
+.slider-val{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--acc)}
+input[type=range]{-webkit-appearance:none;width:100%;height:5px;background:var(--line);border-radius:3px;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;background:var(--acc);border-radius:50%;box-shadow:var(--glow);cursor:pointer}
+
+/* ═══ REMOTE / TRACKPAD ═══ */
+#s-remote{padding:12px}
+#pad{flex:1;background:var(--card);border:1px solid var(--line);border-radius:20px;position:relative;display:flex;align-items:center;justify-content:center;touch-action:none;user-select:none;min-height:200px;overflow:hidden}
+#pad .hint{color:var(--dim);font-size:12px;text-align:center;pointer-events:none;line-height:2}
+#pad .hint .big{font-size:30px;display:block;margin-bottom:6px}
+#pad-dot{position:absolute;top:13px;right:13px;width:8px;height:8px;border-radius:50%;background:var(--dim);transition:.1s}
+#pad-dot.on{background:var(--acc);box-shadow:0 0 8px var(--acc)}
+.pad-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-top:11px}
+.padkb{margin-top:9px}
+
+/* ═══ KEYBOARD ═══ */
+#s-keyboard{padding:12px;gap:9px}
+.kbd-disp{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:13px 15px;font-size:15px;min-height:54px;word-break:break-all;line-height:1.5;flex-shrink:0}
+.kbd-disp .ph{color:var(--dim)}
+.kbd-rows{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.kbd-row{display:flex;gap:4px;justify-content:center}
+.key{background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--txt);font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:500;height:44px;min-width:26px;flex:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.06s;user-select:none;border-bottom:2px solid var(--line)}
+.key:active{transform:translateY(1px);border-bottom-width:1px;background:var(--acc);color:var(--bg)}
+.key.spc{flex:4.5}
+.key.mod{background:var(--card);color:var(--dim);font-size:12px}
+.key.mod.send{background:var(--acc);color:var(--bg);border-color:var(--acc2);font-weight:700}
+.key.mod.del{color:var(--red)}
+.kbd-quick{display:flex;gap:6px;flex-shrink:0}
+.kbd-quick .btn{flex:1;padding:9px 3px;font-size:10px;gap:4px}
+.kbd-quick .btn .bi{font-size:15px}
+
+/* ═══ APPS ═══ */
+#s-apps{padding:0}
+.apps-search{padding:14px 14px 8px;flex-shrink:0}
+#apps-scroll{flex:1;overflow-y:auto;padding:0 12px 16px}
+.alpha{margin-top:10px}
+.alpha-h{font-family:'Space Grotesk',sans-serif;font-size:11px;color:var(--acc);letter-spacing:2px;padding:6px 6px 4px;border-bottom:1px solid var(--line);margin-bottom:3px;font-weight:600}
+.approw{display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:10px;cursor:pointer;transition:.1s;user-select:none}
+.approw:active{background:var(--card2)}
+.appic{font-size:22px;width:30px;text-align:center;flex-shrink:0}
+.appnm{flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.appdot{width:6px;height:6px;border-radius:50%;background:var(--acc);flex-shrink:0}
+.appquit{background:var(--card2);border:1px solid var(--line);color:var(--red);width:30px;height:30px;border-radius:8px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* ═══ SCREEN VIEW ═══ */
+#s-screen{padding:12px;gap:11px}
+#shot{width:100%;border-radius:13px;border:1px solid var(--line);display:none;background:#000}
+.shot-ph{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:44px 20px;text-align:center;color:var(--dim);font-size:13px;line-height:2}
+.shot-ph .big{font-size:34px;display:block;margin-bottom:8px}
+
+/* ═══ TERMINAL ═══ */
+#s-terminal{padding:12px;gap:9px}
+#term-out{flex:1;background:var(--card);border:1px solid var(--line);border-radius:13px;padding:13px;font-size:12px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;color:var(--acc);line-height:1.6;min-height:120px}
+.tl-cmd{color:var(--dim)}
+.tl-err{color:var(--red)}
+.term-in{display:flex;gap:8px;flex-shrink:0;align-items:center}
+.term-in .prompt{color:var(--acc);font-weight:600;flex-shrink:0}
+.term-in .field{flex:1;padding:11px 13px;font-size:14px}
+
+/* ═══ FILES ═══ */
+#s-files{padding:0}
+.files-top{padding:12px 12px 8px;flex-shrink:0;display:flex;flex-direction:column;gap:9px}
+.quick-chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px}
+.chip{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:7px 13px;font-size:12px;white-space:nowrap;cursor:pointer;display:flex;align-items:center;gap:6px;flex-shrink:0;transition:.1s}
+.chip:active{background:var(--card2)}
+.path-row{display:flex;gap:8px;align-items:center}
+.pathbar{flex:1;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 13px;font-size:11px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.icon-btn{background:var(--card);border:1px solid var(--line);border-radius:10px;width:40px;height:38px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;flex-shrink:0;color:var(--txt)}
+.icon-btn.acc{border-color:var(--acc);color:var(--acc)}
+#files-scroll{flex:1;overflow-y:auto;padding:0 12px 16px}
+.frow{display:flex;align-items:center;gap:11px;padding:10px 8px;border-radius:10px;transition:.1s;user-select:none}
+.frow:active{background:var(--card2)}
+.fic{font-size:20px;width:28px;text-align:center;flex-shrink:0}
+.finfo{flex:1;overflow:hidden;cursor:pointer}
+.fnm{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fsz{font-size:10px;color:var(--dim);margin-top:2px}
+.fdl{color:var(--blue);font-size:17px;padding:5px;flex-shrink:0;text-decoration:none}
+
+/* ═══ MONITOR ═══ */
+#s-monitor{padding:14px;gap:11px}
+.mstat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.mhead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.mtitle{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:1.4px}
+.mval{font-family:'Space Grotesk',sans-serif;font-size:21px;font-weight:700;color:var(--acc)}
+.bar{height:7px;background:var(--line);border-radius:4px;overflow:hidden}
+.bar>div{height:100%;border-radius:4px;background:var(--acc);transition:width .4s}
+.bar>div.warn{background:var(--yellow)}
+.bar>div.hot{background:var(--red)}
+.msub{font-size:11px;color:var(--dim);margin-top:6px}
+.cores{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:9px}
+.core{height:34px;background:var(--line);border-radius:5px;position:relative;overflow:hidden;display:flex;align-items:flex-end}
+.core>div{width:100%;background:var(--acc);transition:height .4s}
+.core span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--txt);font-weight:600}
+.prow{display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--line);font-size:11px}
+.prow:last-child{border:none}
+.pnm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pcpu{color:var(--acc);width:42px;text-align:right;flex-shrink:0}
+.pmem{color:var(--dim);width:42px;text-align:right;flex-shrink:0}
+.pkill{background:none;border:1px solid var(--line);color:var(--red);border-radius:6px;font-size:11px;width:26px;height:24px;cursor:pointer;flex-shrink:0}
+
+/* ═══ SETTINGS ═══ */
+#s-settings{padding:14px;gap:12px}
+.theme-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.theme-c{border-radius:13px;border:2px solid var(--line);padding:13px;cursor:pointer;display:flex;flex-direction:column;gap:8px;transition:.14s;user-select:none}
+.theme-c:active{transform:scale(.95)}
+.theme-c.sel{border-color:var(--acc)}
+.theme-c .tcn{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600}
+.swatches{display:flex;gap:5px}
+.sw{width:16px;height:16px;border-radius:50%;border:1px solid rgba(128,128,128,.2)}
+.tokbox{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:15px;display:flex;flex-direction:column;gap:9px}
+.tokval{font-family:'Space Grotesk',sans-serif;font-size:23px;font-weight:700;color:var(--acc);letter-spacing:1px}
+.toksub{font-size:11px;color:var(--dim);line-height:1.6}
+.setrow{font-size:12px;line-height:1.8;color:var(--dim)}
+
+/* ═══ TOAST ═══ */
+#toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(60px);background:var(--card2);border:1px solid var(--line);border-radius:24px;padding:9px 18px;font-size:12px;white-space:nowrap;z-index:300;transition:transform .25s cubic-bezier(.18,.89,.32,1.28);pointer-events:none}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast.ok{border-color:var(--acc);color:var(--acc)}
+#toast.err{border-color:var(--red);color:var(--red)}
+
+/* ═══ MODAL ═══ */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;align-items:flex-end;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+.modal.open{display:flex}
+.mbox{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:19px;width:100%;display:flex;flex-direction:column;gap:11px;animation:slideup .25s ease}
+@keyframes slideup{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
+.mbox h3{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:600}
+.mbox p{font-size:13px;color:var(--dim);line-height:1.5}
+</style>
+</head>
+<body class="t-terminal">
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="logo">
+    <svg viewBox="0 0 100 100" fill="none"><rect x="14" y="20" width="72" height="50" rx="7" stroke="var(--acc)" stroke-width="5"/><path d="M30 38l10 7-10 7" stroke="var(--acc)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M52 52h16" stroke="var(--acc)" stroke-width="5" stroke-linecap="round"/><rect x="42" y="72" width="16" height="6" rx="2" fill="var(--acc)"/><rect x="32" y="80" width="36" height="6" rx="3" fill="var(--acc2)"/></svg>
+  </div>
+  <div class="brand">mac<span>remote</span></div>
+  <div class="sub">Skriv inn token fra Terminal-vinduet<br>der serveren kjører på Macen.</div>
+  <input class="field" type="password" id="tok-in" placeholder="Token" autocomplete="off">
+  <button class="btn acc row" onclick="login()" style="width:100%"><span class="bi">→</span> Koble til</button>
+</div>
+
+<!-- SHELL -->
+<div id="shell">
+  <div id="topbar">
+    <button id="backbtn" onclick="goDash()">‹</button>
+    <div class="title" id="scr-title">Dashboard</div>
+    <div class="conn"><span id="conn-txt">tilkoblet</span><span class="dot" id="conn-dot"></span></div>
+  </div>
+
+  <div id="screens">
+
+    <!-- DASHBOARD -->
+    <div class="screen active" id="s-dash">
+      <div class="dash-hello">
+        <div class="hi" id="greet">God dag</div>
+        <div class="host" id="dash-host">–</div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat">
+          <div class="k">🔋 Batteri</div>
+          <div class="v" id="d-bat">–</div>
+          <div class="vsub" id="d-bat-sub">&nbsp;</div>
+        </div>
+        <div class="stat">
+          <div class="k">⏱ Oppetid</div>
+          <div class="v" id="d-up" style="font-size:19px">–</div>
+          <div class="vsub" id="d-wifi">&nbsp;</div>
+        </div>
+        <div class="stat">
+          <div class="k">⚙️ CPU</div>
+          <div class="v" id="d-cpu">–</div>
+          <div class="minibar"><div id="d-cpu-bar" style="width:0%"></div></div>
+        </div>
+        <div class="stat">
+          <div class="k">🧠 RAM</div>
+          <div class="v" id="d-ram">–</div>
+          <div class="minibar"><div id="d-ram-bar" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <div class="card" id="np-card" style="display:none">
+        <div class="np">
+          <div class="np-art" id="np-art">🎵</div>
+          <div class="np-meta">
+            <div class="np-track" id="np-track">–</div>
+            <div class="np-artist" id="np-artist">–</div>
+          </div>
+          <div class="np-ctrl">
+            <div class="np-btn" onclick="api('media/prev')">⏮</div>
+            <div class="np-btn" onclick="api('media/play')">⏯</div>
+            <div class="np-btn" onclick="api('media/next')">⏭</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="eyebrow" style="margin-bottom:9px">Hurtighandlinger</div>
+        <div class="qrow">
+          <div class="q" onclick="api('system/lock')"><span class="qi">🔒</span><span class="ql">Lås</span></div>
+          <div class="q" onclick="api('system/sleep')"><span class="qi">💤</span><span class="ql">Dvale</span></div>
+          <div class="q" onclick="goScreen('screen','Skjerm');setTimeout(takeShot,200)"><span class="qi">📸</span><span class="ql">Bilde</span></div>
+          <div class="q" onclick="api('system/darkmode')"><span class="qi">🌓</span><span class="ql">Mørk</span></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="eyebrow" style="margin-bottom:9px">Alle funksjoner</div>
+        <div class="tiles">
+          <div class="tile" onclick="goScreen('remote','Trackpad')"><span class="ti">🖱️</span><div class="tn">Trackpad</div><div class="td">Styr musepekeren</div></div>
+          <div class="tile" onclick="goScreen('keyboard','Tastatur')"><span class="ti">⌨️</span><div class="tn">Tastatur</div><div class="td">Skriv til Mac</div></div>
+          <div class="tile" onclick="goScreen('media','Media & lyd')"><span class="ti">🎵</span><div class="tn">Media</div><div class="td">Lyd og lysstyrke</div></div>
+          <div class="tile" onclick="goScreen('system','System')"><span class="ti">⚙️</span><div class="tn">System</div><div class="td">Strøm og innstillinger</div></div>
+          <div class="tile" onclick="goScreen('apps','Programmer');loadApps()"><span class="ti">🚀</span><div class="tn">Programmer</div><div class="td">Åpne og lukk</div></div>
+          <div class="tile" onclick="goScreen('screen','Skjerm')"><span class="ti">📺</span><div class="tn">Skjerm</div><div class="td">Bilde og direkte</div></div>
+          <div class="tile" onclick="goScreen('files','Filer');loadQuick();loadFiles()"><span class="ti">📁</span><div class="tn">Filer</div><div class="td">Bla, last opp/ned</div></div>
+          <div class="tile" onclick="goScreen('terminal','Terminal')"><span class="ti">⬛</span><div class="tn">Terminal</div><div class="td">Kjør kommandoer</div></div>
+          <div class="tile" onclick="goScreen('monitor','Aktivitet');loadMon()"><span class="ti">📊</span><div class="tn">Aktivitet</div><div class="td">CPU, RAM, prosesser</div></div>
+          <div class="tile" onclick="goScreen('settings','Innstillinger')"><span class="ti">🎨</span><div class="tn">Innstillinger</div><div class="td">Tema og token</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REMOTE -->
+    <div class="screen" id="s-remote">
+      <div id="pad">
+        <div class="hint"><span class="big">🖱️</span>1 finger — flytt<br>2 fingre — rull</div>
+        <div id="pad-dot"></div>
+      </div>
+      <div class="pad-btns">
+        <button class="btn blue" onclick="mclick('left')"><span class="bi">◀</span>Venstre</button>
+        <button class="btn" onclick="mclick('double')"><span class="bi">◉</span>Dobbel</button>
+        <button class="btn blue" onclick="mclick('right')"><span class="bi">▶</span>Høyre</button>
+      </div>
+      <button class="btn row padkb" onclick="goScreen('keyboard','Tastatur')"><span class="bi">⌨️</span>Åpne tastatur</button>
+    </div>
+
+    <!-- KEYBOARD -->
+    <div class="screen" id="s-keyboard">
+      <div class="kbd-disp" id="kbd-buf"><span class="ph">Skriv nedenfor, trykk «Send»…</span></div>
+      <div class="kbd-quick">
+        <button class="btn blue" onclick="sendKey('cmd_c')"><span class="bi">⌘</span>Kopier</button>
+        <button class="btn blue" onclick="sendKey('cmd_v')"><span class="bi">⌘</span>Lim</button>
+        <button class="btn blue" onclick="sendKey('cmd_z')"><span class="bi">⌘</span>Angre</button>
+        <button class="btn blue" onclick="sendKey('cmd_space')"><span class="bi">🔍</span>Spotl.</button>
+        <button class="btn red" onclick="clearBuf()"><span class="bi">🗑</span>Tøm</button>
+      </div>
+      <div class="kbd-rows">
+        <div class="kbd-row">
+          <div class="key mod" onclick="sendKey('escape')">esc</div>
+          <div class="key mod" onclick="sendKey('tab')">⇥</div>
+          <div class="key mod" onclick="sendKey('up')">↑</div>
+          <div class="key mod" onclick="sendKey('down')">↓</div>
+          <div class="key mod" onclick="sendKey('left')">←</div>
+          <div class="key mod" onclick="sendKey('right')">→</div>
+        </div>
+        <div class="kbd-row" id="kr1"></div>
+        <div class="kbd-row" id="kr2"></div>
+        <div class="kbd-row" id="kr3"></div>
+        <div class="kbd-row">
+          <div class="key mod" style="flex:1.5" onclick="toggleShift()">⇧</div>
+          <div class="key mod" style="flex:1.5" onclick="toggleNum()">123</div>
+          <div class="key spc" onclick="typeCh(' ')">mellomrom</div>
+          <div class="key mod del" style="flex:1.5" onclick="sendKey('delete')">⌫</div>
+          <div class="key mod send" style="flex:1.5" onclick="sendKey('return')">↵</div>
+        </div>
+      </div>
+      <button class="btn acc row" onclick="sendBuf()"><span class="bi">↵</span>Send tekst til Mac</button>
+    </div>
+
+    <!-- MEDIA -->
+    <div class="screen" id="s-media">
+      <div class="card" id="np-card2" style="display:none">
+        <div class="card-t">Spiller nå</div>
+        <div class="np">
+          <div class="np-art" id="np-art2">🎵</div>
+          <div class="np-meta"><div class="np-track" id="np-track2">–</div><div class="np-artist" id="np-artist2">–</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-t">Avspilling</div>
+        <div class="g3">
+          <button class="btn" onclick="api('media/prev')"><span class="bi">⏮</span>Forrige</button>
+          <button class="btn acc" onclick="api('media/play')"><span class="bi">⏯</span>Play</button>
+          <button class="btn" onclick="api('media/next')"><span class="bi">⏭</span>Neste</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="slider-head"><span class="card-t" style="margin:0">🔊 Volum</span><span class="slider-val" id="vol-v">50</span></div>
+        <input type="range" id="vol-s" min="0" max="100" value="50" oninput="document.getElementById('vol-v').textContent=this.value" onchange="api('volume/set/'+this.value)">
+        <div class="g2" style="margin-top:12px">
+          <button class="btn" id="mute-b" onclick="toggleMute()"><span class="bi">🔊</span><span id="mute-l">Demp</span></button>
+          <button class="btn acc" onclick="setVol(100)"><span class="bi">📢</span>Maks</button>
+        </div>
+      </div>
+      <div class="card" id="bright-card">
+        <div class="slider-head"><span class="card-t" style="margin:0">☀️ Lysstyrke</span><span class="slider-val" id="br-v">–</span></div>
+        <input type="range" id="br-s" min="0" max="100" value="70" oninput="document.getElementById('br-v').textContent=this.value" onchange="api('brightness/set/'+this.value)">
+      </div>
+    </div>
+
+    <!-- SYSTEM -->
+    <div class="screen" id="s-system">
+      <div class="card">
+        <div class="card-t">Skjerm</div>
+        <div class="g2">
+          <button class="btn yellow" onclick="api('display/sleep')"><span class="bi">😴</span>Skjerm av</button>
+          <button class="btn acc" onclick="api('display/wake')"><span class="bi">☀️</span>Vekk</button>
+          <button class="btn" onclick="api('system/screensaver')"><span class="bi">🌌</span>Skjermsparer</button>
+          <button class="btn" onclick="api('system/darkmode')"><span class="bi">🌓</span>Mørk/lys</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-t">Tilstand</div>
+        <div class="g2">
+          <button class="btn" onclick="api('system/sleep')"><span class="bi">💤</span>Sett i dvale</button>
+          <button class="btn purple" onclick="api('system/lock')"><span class="bi">🔒</span>Lås skjerm</button>
+          <button class="btn" id="caf-b" onclick="toggleCaf()"><span class="bi">☕</span><span id="caf-l">Hold våken</span></button>
+          <button class="btn blue" onclick="api('system/findmymac')"><span class="bi">🔔</span>Finn Mac</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-t">Meldinger</div>
+        <div class="g2">
+          <button class="btn" onclick="openModal('m-notif')"><span class="bi">🔔</span>Varsling</button>
+          <button class="btn" onclick="openModal('m-say')"><span class="bi">🗣</span>Si høyt</button>
+        </div>
+        <button class="btn row" style="margin-top:10px" onclick="goScreen('keyboard','Tastatur')"><span class="bi">📋</span>Utklippstavle & tekst</button>
+      </div>
+      <div class="card">
+        <div class="card-t" style="color:var(--red)">⚠ Strøm</div>
+        <div class="g3">
+          <button class="btn yellow" onclick="confirmPower('logout','Logg ut')"><span class="bi">🚪</span>Logg ut</button>
+          <button class="btn blue" onclick="confirmPower('restart','Start på nytt')"><span class="bi">🔄</span>Omstart</button>
+          <button class="btn red" onclick="confirmPower('shutdown','Slå av')"><span class="bi">⏻</span>Slå av</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- APPS -->
+    <div class="screen" id="s-apps">
+      <div class="apps-search"><input class="field" type="text" id="app-q" placeholder="Søk programmer…" oninput="filterApps(this.value)"></div>
+      <div id="apps-scroll"><div style="color:var(--dim);text-align:center;padding:30px;font-size:13px">Laster…</div></div>
+    </div>
+
+    <!-- SCREEN -->
+    <div class="screen" id="s-screen">
+      <div class="g2">
+        <button class="btn acc" id="shot-b" onclick="takeShot()"><span class="bi">📸</span>Ta skjermbilde</button>
+        <button class="btn blue" id="live-b" onclick="toggleLive()"><span class="bi">📺</span>Direkte av/på</button>
+      </div>
+      <div class="shot-ph" id="shot-ph"><span class="big">🖥️</span>Ta et skjermbilde eller start direktevisning av Mac-skjermen</div>
+      <img id="shot" alt="">
+      <a id="shot-dl" class="btn row" style="display:none;text-decoration:none" download="skjermbilde.jpg"><span class="bi">💾</span>Last ned bildet</a>
+    </div>
+
+    <!-- TERMINAL -->
+    <div class="screen" id="s-terminal">
+      <div id="term-out">Mac Remote — terminal. Skriv en kommando under.
+</div>
+      <div class="term-in">
+        <span class="prompt">$</span>
+        <input class="field" type="text" id="term-in" placeholder="f.eks. ls -la" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+        <button class="btn acc" style="padding:11px 15px" onclick="runCmd()">Kjør</button>
+      </div>
+      <button class="btn red row" onclick="clearTerm()"><span class="bi">🗑</span>Tøm konsoll</button>
+    </div>
+
+    <!-- FILES -->
+    <div class="screen" id="s-files">
+      <div class="files-top">
+        <div class="quick-chips" id="quick-chips"></div>
+        <div class="path-row">
+          <div class="icon-btn" onclick="filesUp()">⬆️</div>
+          <div class="pathbar" id="fpath">~</div>
+          <div class="icon-btn acc" onclick="document.getElementById('upl').click()">➕</div>
+        </div>
+      </div>
+      <div id="files-scroll"><div style="color:var(--dim);text-align:center;padding:30px;font-size:13px">Laster…</div></div>
+      <input type="file" id="upl" style="display:none" onchange="uploadFile(this)">
+    </div>
+
+    <!-- MONITOR -->
+    <div class="screen" id="s-monitor">
+      <div class="mstat">
+        <div class="mhead"><span class="mtitle">⚙️ Prosessor</span><span class="mval" id="mo-cpu">–%</span></div>
+        <div class="bar"><div id="mo-cpu-bar" style="width:0%"></div></div>
+        <div class="cores" id="mo-cores"></div>
+      </div>
+      <div class="mstat">
+        <div class="mhead"><span class="mtitle">🧠 Minne</span><span class="mval" id="mo-ram">–</span></div>
+        <div class="bar"><div id="mo-ram-bar" style="width:0%"></div></div>
+        <div class="msub" id="mo-ram-sub"></div>
+      </div>
+      <div class="mstat">
+        <div class="mhead"><span class="mtitle">💾 Lagring</span><span class="mval" id="mo-disk">–</span></div>
+        <div class="bar"><div id="mo-disk-bar" style="width:0%"></div></div>
+        <div class="msub" id="mo-disk-sub"></div>
+      </div>
+      <div class="mstat">
+        <div class="mhead"><span class="mtitle">🌐 Nettverk (totalt)</span></div>
+        <div style="display:flex;gap:18px;font-size:13px"><div>↑ <b id="mo-up" style="color:var(--acc)">–</b> MB</div><div>↓ <b id="mo-dn" style="color:var(--blue)">–</b> MB</div></div>
+      </div>
+      <div class="mstat">
+        <div class="mtitle" style="margin-bottom:10px">📊 Prosesser — mest CPU</div>
+        <div style="display:flex;gap:9px;font-size:9px;color:var(--dim);padding-bottom:5px;border-bottom:1px solid var(--line)"><div style="flex:1">Navn</div><div style="width:42px;text-align:right">CPU</div><div style="width:42px;text-align:right">RAM</div><div style="width:26px"></div></div>
+        <div id="mo-procs"></div>
+      </div>
+      <button class="btn acc row" onclick="loadMon()"><span class="bi">🔄</span>Oppdater nå</button>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="screen" id="s-settings">
+      <div>
+        <div class="eyebrow" style="margin-bottom:9px">Fargetema</div>
+        <div class="theme-grid" id="theme-grid"></div>
+      </div>
+      <div>
+        <div class="eyebrow" style="margin-bottom:9px">Token</div>
+        <div class="tokbox">
+          <div class="tokval" id="set-tok">–</div>
+          <div class="toksub">Token lagres på Macen og er likt hver oppstart, så bokmerket på hjemskjermen fortsetter å virke.</div>
+          <button class="btn red row" style="margin-top:2px" onclick="regenTok()"><span class="bi">🔄</span>Lag nytt token</button>
+        </div>
+      </div>
+      <div>
+        <div class="eyebrow" style="margin-bottom:9px">Legg til på hjemskjerm</div>
+        <div class="card"><div class="setrow">Safari → Del-knappen → «Legg til på Hjem-skjerm».<br>Appen åpnes da i fullskjerm, som et vanlig program.</div></div>
+      </div>
+      <button class="btn red row" onclick="logout()"><span class="bi">🔌</span>Logg ut</button>
+      <div style="text-align:center;color:var(--dim);font-size:11px;padding:8px">Mac Remote v5</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal" id="m-notif"><div class="mbox">
+  <h3>🔔 Send varsling</h3>
+  <input class="field" type="text" id="nt" placeholder="Tittel" value="Mac Remote">
+  <input class="field" type="text" id="nm" placeholder="Melding…">
+  <div class="g2"><button class="btn" onclick="closeModal('m-notif')">Avbryt</button><button class="btn acc" onclick="doNotif()">Send</button></div>
+</div></div>
+
+<div class="modal" id="m-say"><div class="mbox">
+  <h3>🗣 Si høyt på Mac</h3>
+  <input class="field" type="text" id="sy" placeholder="Tekst som skal leses opp…">
+  <div class="g2"><button class="btn" onclick="closeModal('m-say')">Avbryt</button><button class="btn acc" onclick="doSay()">Les opp</button></div>
+</div></div>
+
+<div class="modal" id="m-power"><div class="mbox">
+  <h3 id="pw-title">Bekreft</h3>
+  <p id="pw-text">Er du sikker?</p>
+  <div class="g2"><button class="btn" onclick="closeModal('m-power')">Avbryt</button><button class="btn red" id="pw-go">Bekreft</button></div>
+</div></div>
+
+<div id="toast"></div>
+
+<script>
+let TOKEN='', BASE=window.location.origin;
+let buf='', shiftOn=false, numOn=false;
+let allApps=[], running=[];
+let isMuted=false, isCaf=false;
+let curPath='', parentPath='';
+let liveOn=false;
+let pollTimer=null, activeScreen='dash';
+let caps={};
+
+// ═══ THEMES ═══
+const THEMES=[
+  {id:'terminal',name:'Terminal',sw:['#0b0f0d','#00ff88','#4dd4ff','#ff4d6a']},
+  {id:'nord',name:'Nord',sw:['#191d28','#88c0d0','#81a1c1','#bf616a']},
+  {id:'sunset',name:'Solnedgang',sw:['#17100c','#ff8c42','#ffd166','#ff5470']},
+  {id:'ice',name:'Is',sw:['#eef3f8','#0a66d6','#2f9fff','#d62b45']},
+  {id:'neon',name:'Neon',sw:['#0a0014','#ff2bd6','#25f4ff','#f6ff45']},
+];
+let theme='terminal';
+function buildThemes(){
+  const g=document.getElementById('theme-grid');g.innerHTML='';
+  THEMES.forEach(t=>{
+    const c=document.createElement('div');
+    c.className='theme-c'+(t.id===theme?' sel':'');
+    c.style.background=t.sw[0];
+    c.innerHTML=`<div class="tcn" style="color:${t.sw[1]}">${t.name}</div><div class="swatches">${t.sw.map(s=>`<div class="sw" style="background:${s}"></div>`).join('')}</div>`;
+    c.onclick=()=>setTheme(t.id);
+    g.appendChild(c);
+  });
+}
+function setTheme(id){document.body.className='t-'+id;theme=id;localStorage.setItem('mr_theme',id);buildThemes();}
+
+// ═══ NAV ═══
+function goScreen(id,title){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('s-'+id).classList.add('active');
+  document.getElementById('scr-title').textContent=title;
+  document.getElementById('backbtn').style.display='block';
+  activeScreen=id;
+  document.getElementById('screens').scrollTop=0;
+  if(id!=='screen'&&liveOn)stopLive();
+  restartPoll();
+}
+function goDash(){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('s-dash').classList.add('active');
+  document.getElementById('scr-title').textContent='Dashboard';
+  document.getElementById('backbtn').style.display='none';
+  activeScreen='dash';
+  if(liveOn)stopLive();
+  restartPoll();
+  refreshDash();
+}
+
+// ═══ POLLING (only for active screen) ═══
+function restartPoll(){
+  if(pollTimer)clearInterval(pollTimer);
+  if(activeScreen==='dash'){pollTimer=setInterval(refreshDash,5000);}
+  else if(activeScreen==='monitor'){pollTimer=setInterval(loadMon,2500);}
+  else if(activeScreen==='media'){pollTimer=setInterval(refreshMedia,5000);}
+}
+
+async function refreshDash(){
+  const info=await getJSON('info');
+  if(info){
+    setConn(true);
+    document.getElementById('dash-host').textContent=(info.hostname||'').split('.')[0]+' · macOS '+(info.os||'');
+    document.getElementById('d-bat').textContent=info.battery!=='?'?info.battery+'%':'–';
+    document.getElementById('d-bat-sub').innerHTML=(info.charging?'⚡ Lader':(info.time_left?info.time_left+' igjen':'&nbsp;'));
+    document.getElementById('d-up').textContent=info.uptime||'–';
+    document.getElementById('d-wifi').textContent=info.wifi&&info.wifi!=='?'?'📶 '+info.wifi.substring(0,14):'';
+    isMuted=info.muted==='true';isCaf=info.caffeinated;updateCaf();
+  } else setConn(false);
+  const st=await getJSON('system/stats');
+  if(st&&!st.error){
+    document.getElementById('d-cpu').textContent=st.cpu+'%';
+    setBar('d-cpu-bar',st.cpu);
+    document.getElementById('d-ram').textContent=st.ram_pct+'%';
+    setBar('d-ram-bar',st.ram_pct);
+  }
+  refreshMedia();
+}
+
+async function refreshMedia(){
+  const np=await getJSON('nowplaying');
+  const show=np&&np.playing;
+  ['np-card','np-card2'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=show?'block':'none';});
+  if(show){
+    const emoji=np.app==='Spotify'?'🟢':'🎵';
+    ['','2'].forEach(s=>{
+      const t=document.getElementById('np-track'+s),a=document.getElementById('np-artist'+s),ar=document.getElementById('np-art'+s);
+      if(t)t.textContent=np.track;if(a)a.textContent=np.artist;if(ar)ar.textContent=emoji;
+    });
+  }
+}
+
+function setBar(id,pct){const b=document.getElementById(id);if(!b)return;b.style.width=Math.min(100,pct)+'%';b.className=pct>85?'hot':pct>60?'warn':'';}
+function setConn(ok){const d=document.getElementById('conn-dot'),t=document.getElementById('conn-txt');d.className='dot '+(ok?'on':'off');t.textContent=ok?'tilkoblet':'frakoblet';}
+
+// ═══ KEYBOARD ═══
+const KB={
+  low:[['q','w','e','r','t','y','u','i','o','p','å'],['a','s','d','f','g','h','j','k','l','ø','æ'],['z','x','c','v','b','n','m',',','.','-']],
+  up:[['Q','W','E','R','T','Y','U','I','O','P','Å'],['A','S','D','F','G','H','J','K','L','Ø','Æ'],['Z','X','C','V','B','N','M',';',':','_']],
+  num:[['1','2','3','4','5','6','7','8','9','0'],['@','#','kr','%','&','*','(',')','/','\\'],['!','?','+','=','[',']','{','}','"','\'']],
+};
+function buildKb(){
+  const L=numOn?KB.num:(shiftOn?KB.up:KB.low);
+  ['kr1','kr2','kr3'].forEach((id,i)=>{
+    const r=document.getElementById(id);r.innerHTML='';
+    L[i].forEach(ch=>{const k=document.createElement('div');k.className='key';k.textContent=ch;k.onclick=()=>typeCh(ch);r.appendChild(k);});
+  });
+}
+function typeCh(ch){buf+=ch;drawBuf();if(shiftOn&&!numOn){shiftOn=false;buildKb();}}
+function drawBuf(){const e=document.getElementById('kbd-buf');if(!buf){e.innerHTML='<span class="ph">Skriv nedenfor, trykk «Send»…</span>';return;}e.textContent=buf;}
+function clearBuf(){buf='';drawBuf();}
+function toggleShift(){shiftOn=!shiftOn;numOn=false;buildKb();}
+function toggleNum(){numOn=!numOn;shiftOn=false;buildKb();}
+async function sendBuf(){if(!buf)return;const r=await api('type',{method:'POST',body:{text:buf}});if(r){buf='';drawBuf();toast('✓ Sendt','ok');}}
+async function sendKey(k){await api('key',{method:'POST',body:{key:k}});}
+
+// ═══ TRACKPAD ═══
+let last=null,mbuf={dx:0,dy:0},mtimer=null;const SENS=2.1;
+const pad=document.getElementById('pad'),pdot=document.getElementById('pad-dot');
+pad.addEventListener('touchstart',e=>{e.preventDefault();last=e.touches;pdot.classList.add('on');},{passive:false});
+pad.addEventListener('touchmove',e=>{
+  e.preventDefault();if(!last)return;const t=e.touches;
+  if(t.length===1&&last.length===1){
+    mbuf.dx+=(t[0].clientX-last[0].clientX)*SENS;mbuf.dy+=(t[0].clientY-last[0].clientY)*SENS;
+    if(!mtimer)mtimer=setTimeout(()=>{
+      const dx=Math.round(mbuf.dx),dy=Math.round(mbuf.dy);
+      if(dx||dy)fetch(BASE+'/api/mouse/move',{method:'POST',headers:hdr(),body:JSON.stringify({dx,dy})}).catch(()=>{});
+      mbuf={dx:0,dy:0};mtimer=null;
+    },16);
+  }else if(t.length===2&&last.length===2){
+    const dy=t[0].clientY-last[0].clientY;
+    if(Math.abs(dy)>2)fetch(BASE+'/api/mouse/scroll',{method:'POST',headers:hdr(),body:JSON.stringify({dy:dy>0?3:-3})}).catch(()=>{});
+  }
+  last=t;
+},{passive:false});
+pad.addEventListener('touchend',e=>{e.preventDefault();pdot.classList.remove('on');last=null;},{passive:false});
+function mclick(b){fetch(BASE+'/api/mouse/click',{method:'POST',headers:hdr(),body:JSON.stringify({button:b})}).catch(()=>{});toast('🖱️','ok');}
+
+// ═══ MEDIA ═══
+function setVol(v){document.getElementById('vol-s').value=v;document.getElementById('vol-v').textContent=v;api('volume/set/'+v);}
+async function toggleMute(){const r=await api('volume/togglemute');if(r){isMuted=r.muted;updateMute();}}
+function updateMute(){const b=document.getElementById('mute-b'),l=document.getElementById('mute-l');if(!b)return;if(isMuted){b.classList.add('on-state');l.textContent='Lyd på';}else{b.classList.remove('on-state');l.textContent='Demp';}}
+
+// ═══ SYSTEM ═══
+async function toggleCaf(){const r=await api('system/caffeinate');if(r){isCaf=r.caffeinated;updateCaf();toast(isCaf?'☕ Holder våken':'💤 Normal','ok');}}
+function updateCaf(){const b=document.getElementById('caf-b'),l=document.getElementById('caf-l');if(!b)return;if(isCaf){b.classList.add('on-state');l.textContent='Våken på';}else{b.classList.remove('on-state');l.textContent='Hold våken';}}
+function doNotif(){api('system/notification',{method:'POST',body:{title:document.getElementById('nt').value,message:document.getElementById('nm').value}});closeModal('m-notif');}
+function doSay(){const t=document.getElementById('sy').value;if(t)api('system/say',{method:'POST',body:{text:t}});closeModal('m-say');}
+let pwAction='';
+function confirmPower(action,label){pwAction=action;document.getElementById('pw-title').textContent=label+'?';document.getElementById('pw-text').textContent='Dette utfører «'+label+'» på Macen. Sikker?';openModal('m-power');}
+document.getElementById('pw-go').onclick=()=>{api('system/power',{method:'POST',body:{action:pwAction}});closeModal('m-power');toast('⚡ Sender…','ok');};
+
+// ═══ APPS ═══
+const ICONS={'Safari':'🧭','Finder':'📁','Terminal':'⬛','Notes':'📝','Spotify':'🎵','Mail':'✉️','Calendar':'📅','Messages':'💬','FaceTime':'📹','Maps':'🗺️','Music':'🎶','Podcasts':'🎙️','Photos':'🖼️','Preview':'👁️','TextEdit':'📄','Calculator':'🔢','Reminders':'✅','News':'📰','Stocks':'📈','Weather':'🌤️','Home':'🏠','Shortcuts':'⚡','Numbers':'📊','Pages':'📃','Keynote':'🎞️','Xcode':'🔧','Code':'💻','Chrome':'🌐','Firefox':'🦊','Slack':'💬','zoom':'📹','Discord':'🎮','WhatsApp':'💬','Telegram':'✈️','VLC':'🎬','IINA':'🎬','1Password':'🔐','Notion':'📓','Figma':'🎨','iTerm':'⬛','Warp':'⚡','Arc':'🌀','Brave':'🦁','Obsidian':'🔮','Steam':'🎮','Spark':'✨','Docker':'🐳'};
+function icon(n){for(const k in ICONS)if(n.toLowerCase().includes(k.toLowerCase()))return ICONS[k];return '📦';}
+async function loadApps(){
+  const [i,r]=await Promise.all([getJSON('apps/installed'),getJSON('apps/running')]);
+  allApps=(i&&i.apps)||[];running=((r&&r.apps)||[]).map(a=>a.toLowerCase());
+  drawApps(allApps);
+}
+function drawApps(apps){
+  const wrap=document.getElementById('apps-scroll');
+  if(!apps.length){wrap.innerHTML='<div style="color:var(--dim);text-align:center;padding:30px">Ingen</div>';return;}
+  const groups={};
+  apps.forEach(n=>{const l=n[0].toUpperCase();const k=/[A-ZÆØÅ]/.test(l)?l:'#';(groups[k]=groups[k]||[]).push(n);});
+  const keys=Object.keys(groups).sort((a,b)=>a==='#'?1:b==='#'?-1:a.localeCompare(b));
+  wrap.innerHTML='';
+  keys.forEach(L=>{
+    const sec=document.createElement('div');sec.className='alpha';
+    sec.innerHTML=`<div class="alpha-h">${L}</div>`;
+    groups[L].forEach(name=>{
+      const on=running.includes(name.toLowerCase());
+      const row=document.createElement('div');row.className='approw';
+      row.innerHTML=`<div class="appic">${icon(name)}</div><div class="appnm">${name}</div>${on?'<div class="appdot"></div><button class="appquit" onclick="event.stopPropagation();quitApp(\''+name.replace(/'/g,"")+'\')">✕</button>':''}`;
+      row.onclick=()=>{api('app/open/'+encodeURIComponent(name));toast('🚀 '+name,'ok');};
+      sec.appendChild(row);
+    });
+    wrap.appendChild(sec);
+  });
+}
+function filterApps(q){if(!q){drawApps(allApps);return;}drawApps(allApps.filter(a=>a.toLowerCase().includes(q.toLowerCase())));}
+async function quitApp(n){await api('app/quit/'+encodeURIComponent(n));toast('✕ Lukket '+n,'ok');setTimeout(loadApps,600);}
+
+// ═══ SCREEN ═══
+async function takeShot(){
+  const b=document.getElementById('shot-b');b.classList.add('on-state');b.querySelector('.bi').textContent='⏳';
+  const d=await getJSON('display/screenshot');
+  if(d&&d.ok){
+    const src='data:image/jpeg;base64,'+d.image;
+    const img=document.getElementById('shot');img.src=src;img.style.display='block';
+    document.getElementById('shot-ph').style.display='none';
+    const dl=document.getElementById('shot-dl');dl.href=src;dl.style.display='flex';
+    toast('📸 Tatt','ok');
+  }else toast('❌ '+((d&&d.err)||'Feil'),'err');
+  b.classList.remove('on-state');b.querySelector('.bi').textContent='📸';
+}
+function toggleLive(){liveOn?stopLive():startLive();}
+function startLive(){
+  liveOn=true;const b=document.getElementById('live-b');b.classList.add('on-state');
+  const img=document.getElementById('shot');
+  img.src=BASE+'/api/display/stream?token='+encodeURIComponent(TOKEN)+'&_='+Date.now();
+  img.style.display='block';document.getElementById('shot-ph').style.display='none';
+  document.getElementById('shot-dl').style.display='none';
+  toast('📺 Direkte på','ok');
+}
+function stopLive(){
+  liveOn=false;const b=document.getElementById('live-b');if(b)b.classList.remove('on-state');
+  const img=document.getElementById('shot');img.src='';img.style.display='none';
+  const ph=document.getElementById('shot-ph');if(ph)ph.style.display='block';
+}
+
+// ═══ TERMINAL ═══
+function tprint(txt,cls){const o=document.getElementById('term-out');const d=document.createElement('div');if(cls)d.className=cls;d.textContent=txt;o.appendChild(d);o.scrollTop=o.scrollHeight;}
+async function runCmd(){
+  const inp=document.getElementById('term-in');const cmd=inp.value.trim();if(!cmd)return;
+  tprint('$ '+cmd,'tl-cmd');inp.value='';
+  const d=await getJSON('terminal',{method:'POST',body:{cmd}});
+  if(d){if(d.out)tprint(d.out);if(d.err)tprint(d.err,'tl-err');if(!d.out&&!d.err&&d.ok)tprint('(ingen utdata)','tl-cmd');if(d.err&&!d.ok&&d.err.includes('Blokkert'))tprint(d.err,'tl-err');}
+}
+function clearTerm(){document.getElementById('term-out').innerHTML='Mac Remote — terminal.\n';}
+
+// ═══ FILES ═══
+async function loadQuick(){
+  const d=await getJSON('files/quick');const wrap=document.getElementById('quick-chips');wrap.innerHTML='';
+  ((d&&d.folders)||[]).forEach(f=>{const c=document.createElement('div');c.className='chip';c.innerHTML=`${f.icon} ${f.name}`;c.onclick=()=>loadFiles(f.path);wrap.appendChild(c);});
+}
+async function loadFiles(path){
+  const url=path?'files/list?path='+encodeURIComponent(path):'files/list';
+  const d=await getJSON(url);
+  if(!d||!d.ok){toast('❌ '+((d&&d.err)||'Feil'),'err');return;}
+  curPath=d.path;parentPath=d.parent;
+  document.getElementById('fpath').textContent=d.path.replace(/^\/Users\/[^/]+/,'~');
+  drawFiles(d.entries);
+}
+function drawFiles(entries){
+  const w=document.getElementById('files-scroll');w.innerHTML='';
+  if(!entries.length){w.innerHTML='<div style="color:var(--dim);text-align:center;padding:30px">Tom mappe</div>';return;}
+  entries.forEach(e=>{
+    const row=document.createElement('div');row.className='frow';
+    const ic=e.is_dir?'📁':fileIcon(e.name);
+    const sz=e.is_dir?'':fmtSize(e.size);
+    row.innerHTML=`<div class="fic">${ic}</div><div class="finfo"><div class="fnm">${e.name}</div>${sz?`<div class="fsz">${sz}</div>`:''}</div>${!e.is_dir?`<a class="fdl" href="${BASE}/api/files/download?path=${encodeURIComponent(e.path)}&token=${encodeURIComponent(TOKEN)}" download="${e.name}">⬇</a>`:''}`;
+    row.querySelector('.finfo').onclick=()=>{if(e.is_dir)loadFiles(e.path);else{api('files/open?path='+encodeURIComponent(e.path));toast('↗ Åpner på Mac','ok');}};
+    w.appendChild(row);
+  });
+}
+function filesUp(){if(parentPath)loadFiles(parentPath);}
+async function uploadFile(input){
+  const file=input.files[0];if(!file)return;
+  const fd=new FormData();fd.append('file',file);fd.append('path',curPath);
+  toast('⬆️ Laster opp…','ok');
+  try{
+    const r=await fetch(BASE+'/api/files/upload',{method:'POST',headers:{'X-Auth-Token':TOKEN},body:fd});
+    const d=await r.json();
+    if(d.ok){toast('✓ Lastet opp','ok');loadFiles(curPath);}else toast('❌ '+d.err,'err');
+  }catch(e){toast('❌ Feil','err');}
+  input.value='';
+}
+function fileIcon(n){const e=n.split('.').pop().toLowerCase();const m={pdf:'📕',doc:'📘',docx:'📘',txt:'📃',md:'📃',rtf:'📃',jpg:'🖼️',jpeg:'🖼️',png:'🖼️',gif:'🖼️',heic:'🖼️',svg:'🖼️',mp3:'🎵',wav:'🎵',m4a:'🎵',mp4:'🎬',mov:'🎬',mkv:'🎬',zip:'🗜️',rar:'🗜️',dmg:'💿',pkg:'📦',app:'📦',py:'🐍',js:'📜',ts:'📜',html:'🌐',css:'🎨',json:'🔧',sh:'⬛',xls:'📊',xlsx:'📊',csv:'📊',key:'🎞️',pages:'📃',numbers:'📊'};return m[e]||'📄';}
+function fmtSize(b){if(!b)return'';if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(0)+' KB';if(b<1073741824)return(b/1048576).toFixed(1)+' MB';return(b/1073741824).toFixed(2)+' GB';}
+
+// ═══ MONITOR ═══
+async function loadMon(){
+  const [s,p]=await Promise.all([getJSON('system/stats'),getJSON('system/processes')]);
+  if(s&&!s.error){
+    document.getElementById('mo-cpu').textContent=s.cpu+'%';monBar('mo-cpu-bar',s.cpu);
+    const cw=document.getElementById('mo-cores');cw.innerHTML='';
+    (s.cores||[]).forEach(c=>{const d=document.createElement('div');d.className='core';d.innerHTML=`<div style="height:${c}%;background:${c>85?'var(--red)':c>60?'var(--yellow)':'var(--acc)'}"></div><span>${Math.round(c)}</span>`;cw.appendChild(d);});
+    document.getElementById('mo-ram').textContent=s.ram_pct+'%';monBar('mo-ram-bar',s.ram_pct);
+    document.getElementById('mo-ram-sub').textContent=`${s.ram_used} / ${s.ram_total} GB`;
+    document.getElementById('mo-disk').textContent=s.disk_pct+'%';monBar('mo-disk-bar',s.disk_pct);
+    document.getElementById('mo-disk-sub').textContent=`${s.disk_used} / ${s.disk_total} GB`;
+    document.getElementById('mo-up').textContent=s.net_sent;document.getElementById('mo-dn').textContent=s.net_recv;
+  }
+  if(p&&p.processes){
+    const w=document.getElementById('mo-procs');w.innerHTML='';
+    p.processes.forEach(pr=>{const d=document.createElement('div');d.className='prow';d.innerHTML=`<div class="pnm">${pr.name}</div><div class="pcpu">${pr.cpu}%</div><div class="pmem">${pr.mem.toFixed(1)}%</div><button class="pkill" onclick="killProc(${pr.pid},'${(pr.name||'').replace(/'/g,'')}')">✕</button>`;w.appendChild(d);});
+  }
+}
+function monBar(id,pct){const b=document.getElementById(id);b.style.width=Math.min(100,pct)+'%';b.className=pct>85?'hot':pct>60?'warn':'';}
+async function killProc(pid,name){const r=await api('system/kill',{method:'POST',body:{pid}});if(r){toast('✕ Avsluttet '+name,'ok');setTimeout(loadMon,500);}}
+
+// ═══ CORE ═══
+function hdr(){return {'X-Auth-Token':TOKEN,'Content-Type':'application/json'};}
+async function getJSON(ep,opts={}){
+  try{
+    const r=await fetch(BASE+'/api/'+ep,{method:opts.method||'GET',headers:hdr(),body:opts.body?JSON.stringify(opts.body):undefined});
+    return await r.json();
+  }catch(e){return null;}
+}
+async function api(ep,opts={}){
+  const d=await getJSON(ep,opts);
+  if(d===null){toast('❌ Ingen kontakt','err');setConn(false);return null;}
+  if(d.error){toast('⚠️ '+d.error,'err');return null;}
+  if(d.ok===false){toast('❌ '+(d.err||'Feil'),'err');return null;}
+  return d;
+}
+
+async function regenTok(){
+  const d=await api('token/regenerate',{method:'POST'});
+  if(d&&d.token){TOKEN=d.token;localStorage.setItem('mr_tok',TOKEN);document.getElementById('set-tok').textContent=TOKEN;toast('🔄 Nytt token','ok');}
+}
+
+// ═══ AUTH ═══
+async function login(){
+  TOKEN=document.getElementById('tok-in').value.trim();
+  if(!TOKEN)return;
+  const info=await getJSON('info');
+  if(!info||info.error){toast('⚠️ Feil token','err');return;}
+  localStorage.setItem('mr_tok',TOKEN);
+  document.getElementById('set-tok').textContent=TOKEN;
+  document.getElementById('login').style.display='none';
+  document.getElementById('shell').style.display='flex';
+  caps=await getJSON('capabilities')||{};
+  if(!caps.brightness){const bc=document.getElementById('bright-card');if(bc)bc.style.display='none';}
+  buildThemes();buildKb();
+  const h=new Date().getHours();
+  document.getElementById('greet').textContent=h<6?'God natt':h<11?'God morgen':h<18?'God dag':'God kveld';
+  goDash();
+}
+function logout(){localStorage.removeItem('mr_tok');location.reload();}
+
+// ═══ MODALS ═══
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+
+// ═══ TOAST ═══
+let tt;
+function toast(m,type='ok'){const e=document.getElementById('toast');e.textContent=m;e.className='show '+type;clearTimeout(tt);tt=setTimeout(()=>e.className='',1600);}
+
+// ═══ INIT ═══
+window.addEventListener('load',()=>{
+  const th=localStorage.getItem('mr_theme');if(th)setTheme(th);
+  const tk=localStorage.getItem('mr_tok');
+  if(tk){TOKEN=tk;document.getElementById('tok-in').value=tk;login();}
+  document.getElementById('tok-in').addEventListener('keydown',e=>{if(e.key==='Enter')login();});
+  document.getElementById('term-in').addEventListener('keydown',e=>{if(e.key==='Enter')runCmd();});
+});
+</script>
+</body>
+</html>
